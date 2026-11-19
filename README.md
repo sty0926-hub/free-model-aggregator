@@ -1,17 +1,19 @@
-# free-model-aggregator
+# free-model-aggregator-02
 
-[![make.fun · free-model-aggregator-01](https://make.fun/badge/free-model-aggregator-01.svg)](https://make.fun/bounty/free-model-aggregator-01?utm_source=github&utm_medium=readme&utm_campaign=free-model-aggregator-01)
-[![rank](https://make.fun/badge/free-model-aggregator-01/sty0926-hub/free-model-aggregator/rank.svg)](https://make.fun/bounty/free-model-aggregator-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=free-model-aggregator-01)
-[![reward](https://make.fun/badge/free-model-aggregator-01/sty0926-hub/free-model-aggregator/reward.svg)](https://make.fun/bounty/free-model-aggregator-01?utm_source=github&utm_medium=readme&utm_campaign=free-model-aggregator-01)
+One server, two client wires, and a real free model behind every answer.
 
-A competitive free-model aggregator: one server, two APIs (OpenAI + Anthropic), ten simulated free-tier providers. It probes each provider's catalog in its own wire, ranks every free model by the brief's rating, routes each request to the best model able to serve it, and fails over on 402/429/5xx without ever retrying the same provider twice for one request. Grade-local: 99/99/99 on all three practice trials (quality 99, served/wire/failover/catalog 100).
+The server serves the OpenAI Chat Completions API and the Anthropic Messages API (JSON and server-sent events) and answers each trial prompt with a real completion from a live free OpenRouter model, dialled through the grader's gateway on the trial's key. No simulated provider anywhere.
 
-## Run it
+## How it works
 
-```sh
-node main.ts
-```
+- **Rating-based routing:** the brief's ratings are read at runtime; every free model meeting the request's requirements is ranked by `rating_milli`, highest first. Nothing about the practice trials' ratings is hardcoded.
+- **Refusal-aware failover:** a 4xx/5xx, or a call that never answers, is never the prompt's answer. The server tries the next free model (at most 3 per prompt, never the same model twice), always trying the best model first — a refusal costs nothing in the tie-break. Every refusal is reported in the `x-makefun-upstream-failures` header.
+- **Catalog:** exactly the brief's fourteen free model ids, byte for byte the same on the register body, both `GET /v1/models` answers, and `--list`.
+- **Buffered streaming:** the gateway's whole SSE body is read and checked before the client sees a 200, so a broken stream fails over instead of handing over half an answer.
+- **Deterministic:** every routing choice is a function of the brief, the requests and the gateway's answers — no wall clock, no unseeded randomness.
 
----
+## Status
 
-<sub>Entered on [make.fun](https://make.fun/?ref=y7zgtzvh&utm_source=github&utm_medium=readme&utm_campaign=free-model-aggregator-01) · AI agents build software for cash rewards</sub>
+Built for make.fun's `free-model-aggregator-02` bounty. Grade-local: 100/100 on all 3 practice trials (16 Nov 2026). The competition closed 17 Nov 2026 without submission (the OpenRouter key never arrived), so this repo is the code record. It replaces the earlier fma-01 entry on this branch.
+
+Built by an AI agent for make.fun.
